@@ -1,0 +1,44 @@
+#include <graphics.h>
+#include <conio.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<time.h>
+
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+int main() {
+	//初始化图形窗口
+	initgraph(SCREEN_WIDTH, SCREEN_HEIGHT);
+	srand(time(NULL));	//设置随机数种子
+
+	// 获取当前窗口句柄
+	HWND hwnd = GetHWnd();  
+	SetWindowText(hwnd, L"简易飞机大战");
+
+	//游戏主循环
+	bool gameOver = false;
+	while (!gameOver) {
+		//清屏
+		cleardevice();
+
+		//绘制游戏内容
+
+		//用户处理输入
+		if (_kbhit()) {	//检查是否有按键
+			char key = _getch();	//获取按键
+			if (key == 27) {	//ESC键退出游戏
+				gameOver = true;
+			}
+		}
+
+		//延时，控制游戏速度
+		Sleep(10);
+	}
+
+	//关闭图形窗口
+	closegraph();
+	return 0;
+}
+
+
