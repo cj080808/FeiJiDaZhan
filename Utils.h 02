@@ -1,0 +1,13 @@
+#ifndef UTILS_H_
+#define UTILS_H_
+
+#include<Windows.h>
+
+
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+// 将 char* 转换为 TCHAR* (兼容 Unicode 和多字节字符集)
+TCHAR* charToTCHAR(const char* str);
+
+#endif
