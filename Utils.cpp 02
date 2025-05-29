@@ -1,0 +1,9 @@
+//Utils.cpp
+
+#include"Utils.h"
+
+TCHAR* charToTCHAR(const char* str) {
+	static TCHAR buffer[1024];
+	MultiByteToWideChar(CP_ACP, 0, str, -1, buffer, 1024);
+	return buffer;
+}
