@@ -1,0 +1,131 @@
+#include <graphics.h>
+#include <conio.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<time.h>
+#include<vector>
+#include"Player.h"
+#include"Enemy.h"
+#include"Bullet.h"
+#include"Utils.h"
+
+
+int main() {
+	//初始化图形窗口
+	initgraph(SCREEN_WIDTH, SCREEN_HEIGHT);
+	srand(time(NULL));	//设置随机数种子
+
+	// 获取当前窗口句柄
+	HWND hwnd = GetHWnd();  
+	SetWindowText(hwnd, L"简易飞机大战");
+
+	Player player;	//创建玩家对象
+	std::vector<Enemy> enemies;	//敌机数组
+	std::vector<Bullet> bullets;	//子弹数组
+	int score = 0;	//分数
+
+	//初始化一些敌机
+	for (int i = 0; i < 5; i++) {
+		enemies.push_back(Enemy());
+	}
+
+	//游戏主循环
+	bool gameOver = false;
+	while (!gameOver) {
+		//清屏
+		cleardevice();
+
+		//绘制分数
+		settextcolor(WHITE);
+		char scoreText[20];
+		sprintf_s(scoreText, sizeof(scoreText), "分数：%d", score);
+		outtextxy(SCREEN_WIDTH - 100, 10, charToTCHAR(scoreText));
+
+		//绘制和移动所有敌机
+		for (int i = 0; i < enemies.size(); i++) {
+			enemies[i].draw();
+			enemies[i].move();
+
+
+			//绘制游戏内容
+
+			//检测玩家与敌机碰撞
+			if (enemies[i].checkCollision(player.getX(), player.getY(), player.getWidth(), player.getHeight())) {
+				player.loseLife();
+				enemies[i].setAlive(false);	//敌机被击中
+				score += 10;	//击中敌机加分
+
+				if (player.getLives() <= 0) {
+					gameOver = true;
+				}
+			}
+
+			//检测子弹与敌机碰撞
+			for (int j = 0; j < bullets.size(); j++) {
+				if (bullets[j].checkCollision(enemies[i].getX(), enemies[i].getY(), enemies[i].getWidth(), enemies[i].getHeight())) {
+					bullets[j].setAlive(false);
+					enemies[i].setAlive(false);
+					score += 10;
+				}
+			}
+
+			//重新生成敌机
+			if (!enemies[i].isAlive()) {
+				enemies[i] = Enemy();
+			}
+
+
+		}
+
+		//绘制和移动所有的子弹
+		for (int i = 0; i < bullets.size(); i++) {
+			bullets[i].draw();
+			bullets[i].move();
+		}
+		
+		//移除死亡的子弹
+		for (auto it = bullets.begin(); it != bullets.end();) {
+			if (!it->isAlive()) {
+				it = bullets.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
+
+		//绘制玩家飞机
+		player.draw();
+
+		//用户处理输入
+		if (_kbhit()) {	//检查是否有按键
+			char key = _getch();	//获取按键
+			switch (key) {
+			case 'w': case 'W': player.move('w'); break;
+			case 's': case 'S': player.move('s'); break;
+			case 'a': case 'A': player.move('a'); break;
+			case 'd': case 'D': player.move('d'); break;
+			case ' ':	//空格键发射子弹
+				if (player.canShoot()) {
+					bullets.push_back(Bullet(player.getX(), player.getY()));
+				}
+				break;
+			case 27: gameOver = true; break;
+			}
+		}
+
+		//延时，控制游戏速度
+		Sleep(10);
+	}
+
+	//游戏结束画面
+	settextstyle(40, 0, _T("宋体"));
+	char gameOverText[50];
+	sprintf_s(gameOverText, sizeof(gameOverText), "游戏结束，分数：%d", score);
+	outtextxy(SCREEN_WIDTH/2 - 150,SCREEN_HEIGHT/2 - 20, charToTCHAR(gameOverText));
+	Sleep(3000);
+
+	closegraph();
+	return 0;
+}
+
+
