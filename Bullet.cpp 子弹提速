@@ -1,0 +1,34 @@
+//Bullet.cpp
+
+#include <graphics.h>
+#include"Bullet.h"
+
+Bullet::Bullet(int px, int py) {
+	m_width = 2;
+	m_height = 10;
+	m_x = px + 15;
+	m_y = py - m_height;
+	m_speed = 8;
+	m_alive = true;
+	m_initialSpeed = 8;
+}
+
+void Bullet::draw() {
+	if (m_alive) {
+		setfillcolor(GREEN);
+		solidrectangle(m_x, m_y, m_x + m_height, m_y + m_height);
+	}
+}
+
+void Bullet::move() {
+	if (m_alive) {
+		m_y -= m_speed;
+		if (m_y < 0) {
+			m_alive = false;
+		}
+	}
+}
+
+void Bullet::setSpeed(int speed) {
+	m_speed = speed;
+}
