@@ -1,0 +1,57 @@
+//Enemy.cpp
+
+
+#include <graphics.h>
+#include"Enemy.h"
+#include "Utils.h"
+
+Enemy::Enemy() {
+	m_width = 25;
+	m_height = 25;
+	m_x = rand() % (SCREEN_WIDTH - m_width);
+	m_y = -m_height;
+	m_speed = 3;
+	m_alive = true;
+}
+
+void Enemy::draw() {
+	if (m_alive) {
+
+		settextcolor(RED);
+		settextstyle(14, 0, _T("宋体"));
+
+		//敌机符号形状
+		const char* enemyShape[] = {
+			"\\+/",
+			" | "
+		};
+
+		int startX = m_x;
+		int startY = m_y;
+
+		for (int i = 0; i < 2; i++) {
+			outtextxy(startX, startY + i * 14, charToTCHAR(enemyShape[i]));
+		}
+	}
+}
+
+void Enemy::move() {
+	if (m_alive) {
+		m_y += m_speed;	//敌机向下移动
+
+		//如果敌机飞出屏幕底部，标记为死亡
+		if (m_y > SCREEN_HEIGHT) {
+			m_alive = false;
+		}
+	}
+}
+
+
+/*
+ /+\
+<<*>>
+ * *
+
+\+/
+ | 
+ */
