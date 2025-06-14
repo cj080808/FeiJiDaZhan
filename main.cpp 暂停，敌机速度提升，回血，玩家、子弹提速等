@@ -1,0 +1,265 @@
+//main.cpp
+
+#include <graphics.h>
+#include <conio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+#include "Player.h"
+#include "Enemy.h"
+#include "Bullet.h"
+#include "Utils.h"
+
+bool paused = false;
+clock_t startTime;  //记录游戏开始时间
+
+void showStartScreen();
+bool showGameOverScreen(int score);
+void initGame(Player& player, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets);
+void handleInput(Player& player, std::vector<Bullet>& bullets);
+bool handleCollisions(Player& player, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets, int& score);
+void removeDeadBullets(std::vector<Bullet>& bullets);
+void drawGameElements(Player& player, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets, int score);
+void adjustEnemySpeed(std::vector<Enemy>& enemies);
+
+
+
+int main() {
+    // 初始化图形窗口
+    initgraph(SCREEN_WIDTH, SCREEN_HEIGHT);
+    srand(time(NULL)); // 初始化随机数种子
+
+    // 获取当前窗口句柄
+    HWND hwnd = GetHWnd();
+    SetWindowText(hwnd, L"太空战机射击");
+
+    startTime = clock();    //记录游戏开始时间
+
+    bool restart = true;
+    while (restart) {
+        showStartScreen();
+
+        Player player;
+        std::vector<Enemy> enemies;
+        std::vector<Bullet> bullets;
+        int score = 0;
+        bool gameOver = false;
+
+        initGame(player, enemies, bullets);
+
+        // 游戏主循环
+        while (!gameOver) {
+            drawGameElements(player, enemies, bullets, score);
+            handleInput(player, bullets);
+
+            if (!paused) {                
+                gameOver = handleCollisions(player, enemies, bullets, score);
+                removeDeadBullets(bullets);
+                adjustEnemySpeed(enemies);  //调整敌人速度
+            }
+            
+            // 延时控制游戏速度
+            Sleep(50);
+        }
+
+        // 显示游戏结束画面并检查是否重启
+        restart = showGameOverScreen(score);
+    }
+
+    // 关闭图形窗口
+    closegraph();
+    return 0;
+}
+
+
+// 显示开始屏幕
+void showStartScreen() {
+    settextcolor(WHITE);
+    settextstyle(40, 0, _T("宋体"));
+    outtextxy(SCREEN_WIDTH / 2 - 120, SCREEN_HEIGHT / 2 - 60, _T("太空战机射击"));
+
+    settextstyle(20, 0, _T("宋体"));
+    outtextxy(SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, _T("按任意键开始游戏"));
+    outtextxy(SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 + 30, _T("WASD移动，空格键射击，ESC退出"));
+
+    _getch();
+}
+
+// 显示游戏结束屏幕，返回是否重启游戏
+bool showGameOverScreen(int score) {
+    // 清屏
+    cleardevice();
+
+    // 显示游戏结束
+    settextcolor(RED);
+    settextstyle(60, 0, _T("宋体"));
+    outtextxy(SCREEN_WIDTH / 2 - 120, SCREEN_HEIGHT / 3, _T("游戏结束"));
+
+    // 显示最终得分
+    settextcolor(YELLOW);
+    settextstyle(40, 0, _T("宋体"));
+    char scoreText[50];
+    sprintf_s(scoreText, sizeof(scoreText), "最终得分：%d", score);
+    outtextxy(SCREEN_WIDTH / 2 - 120, SCREEN_HEIGHT / 2, charToTCHAR(scoreText));
+
+    // 显示重新开始提示
+    settextcolor(GREEN);
+    settextstyle(24, 0, _T("宋体"));
+    outtextxy(SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT * 2 / 3, _T("按R重新开始，按ESC退出"));
+
+    // 等待用户输入
+    char key;
+    do {
+        key = _getch();
+        if (key == 'r' || key == 'R') {
+            cleardevice();
+            return true;  // 重启游戏
+        }
+    } while (key != 27); // ESC键退出
+    return false;
+}
+
+// 初始化游戏元素
+void initGame(Player& player, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets) {
+    player = Player();  // 创建新玩家
+    enemies.clear();    // 清空敌人容器
+    bullets.clear();    // 清空子弹容器
+
+    // 生成初始敌人
+    for (int i = 0; i < 5; i++) {
+        enemies.push_back(Enemy());
+    }
+}
+
+// 处理用户输入
+void handleInput(Player& player, std::vector<Bullet>& bullets) {
+    if (_kbhit()) { // 检查是否有按键
+        char key = _getch(); // 获取按键
+        switch (key) {
+        case 'w': case 'W': player.move('w'); break;
+        case 's': case 'S': player.move('s'); break;
+        case 'a': case 'A': player.move('a'); break;
+        case 'd': case 'D': player.move('d'); break;
+        case ' ': // 空格键发射子弹
+            if (player.canShoot()) {                
+                bullets.push_back(Bullet(player.getX(), player.getY()));
+            }
+            break;
+        case 27: exit(0); break; // ESC退出游戏
+        case 'r': case 'R': paused = !paused; break;
+        }
+    }
+}
+
+// 处理碰撞检测，返回游戏是否结束
+bool handleCollisions(Player& player, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets, int& score) {
+    static int lastScoreForLife = 0;
+
+    for (int i = 0; i < enemies.size(); i++) {
+        // 玩家与敌人碰撞检测
+        if (enemies[i].checkCollision(player.getX(), player.getY(), player.getWidth(), player.getHeight())) {
+            player.loseLife();
+            enemies[i].setAlive(false); // 敌人死亡
+            score += 10; // 击杀敌人加分
+
+            if (player.getLives() <= 0) {
+                return true; // 游戏结束
+            }
+        }
+
+        // 子弹与敌人碰撞检测
+        for (int j = 0; j < bullets.size(); j++) {
+            if (bullets[j].checkCollision(enemies[i].getX(), enemies[i].getY(), enemies[i].getWidth(), enemies[i].getHeight())) {
+                bullets[j].setAlive(false);
+                enemies[i].setAlive(false);
+                score += 10;
+            }
+        }
+
+        // 重置死亡的敌人
+        if (!enemies[i].isAlive()) {
+            enemies[i] = Enemy();
+        }
+    }
+
+    //根据积分调整玩家飞机和子弹速度
+    int speedIncrease = score / 100;    //每100分提升一次速度
+    player.setSpeed(player.getInitialSpeed() + speedIncrease);
+    for (auto& bullet : bullets) {
+        bullet.setSpeed(bullet.getInitialSpeed() + speedIncrease);
+    }
+
+    //每获得100分加一条命
+    if (score - lastScoreForLife >= 100 && score > 0) {
+        player.addLife();
+        lastScoreForLife = score;
+    }
+
+    return false; // 游戏继续
+}
+
+// 移除死亡的子弹
+void removeDeadBullets(std::vector<Bullet>& bullets) {
+    for (auto it = bullets.begin(); it != bullets.end();) {
+        if (!it->isAlive() || it->getY() < 0) {
+            it = bullets.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+// 绘制游戏元素
+void drawGameElements(Player& player, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets, int score) {
+    // 清屏
+    cleardevice();
+
+    // 显示得分
+    settextcolor(WHITE);
+    char scoreText[20];
+    sprintf_s(scoreText, sizeof(scoreText), "得分：%d", score);
+    outtextxy(SCREEN_WIDTH - 100, 10, charToTCHAR(scoreText));
+
+    // 显示生命值
+    settextcolor(WHITE);
+    char livesText[20];
+    sprintf_s(livesText, sizeof(livesText), "生命：%d", player.getLives());
+    outtextxy(10, 10, charToTCHAR(livesText));
+
+    // 绘制和移动所有敌人
+    for (int i = 0; i < enemies.size(); i++) {
+        enemies[i].draw();
+        enemies[i].move();
+    }
+
+    // 绘制和移动所有子弹
+    for (int i = 0; i < bullets.size(); i++) {
+        bullets[i].draw();
+        bullets[i].move();
+    }
+
+    // 绘制玩家
+    player.draw();
+
+    // 显示暂停时间
+    if (paused) {
+        settextcolor(RED);
+        settextstyle(40, 0, _T("宋体"));
+        outtextxy(SCREEN_WIDTH / 2 - 80, SCREEN_HEIGHT / 2 - 20, _T("游戏暂停"));
+    }
+}
+
+// 调整敌机速度
+void adjustEnemySpeed(std::vector<Enemy>& enemies) {
+    clock_t currentTime = clock();
+    double elapsedTime = (double)(currentTime - startTime) / CLOCKS_PER_SEC;
+
+    // 每过10秒，敌机速度增加1
+    int speedIncrease = static_cast<int>(elapsedTime / 10);
+    for (auto& enemy : enemies) {
+        enemy.setSpeed(3 + speedIncrease); // 初始速度为3
+    }
+}
+
